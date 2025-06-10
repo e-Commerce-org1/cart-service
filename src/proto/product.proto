@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package product;
+
+service ProductService { 
+  rpc GetProduct (ProductID) returns (Response) {}
+}
+
+message ProductID {
+  string id = 1;
+}
+
+message Response {
+  int32 code = 1;
+  string status = 2;
+  string timestamp = 3;
+  string data = 4;
+  string error = 5;
+} 

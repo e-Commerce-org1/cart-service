@@ -1,0 +1,35 @@
+export const ERROR_MESSAGES = {
+  CART: {
+    NOT_FOUND: 'Cart not found',
+    ITEM_NOT_FOUND: 'Item not found in cart',
+    INVALID_QUANTITY: 'Quantity must be at least 1',
+    INVALID_PRODUCT: 'Invalid product',
+    PRODUCT_NOT_FOUND: 'Product not found',
+    PRODUCT_SERVICE_ERROR: 'Failed to fetch product details',
+    INVALID_PRODUCT_DATA: 'Invalid product data format',
+    INCOMPLETE_PRODUCT_DATA: 'Product data is incomplete',
+    DATABASE_ERROR: 'Failed to access cart',
+    SAVE_ERROR: 'Failed to save cart',
+    CLEAR_ERROR: 'Failed to clear cart',
+    UPDATE_ERROR: 'Failed to update cart',
+    REMOVE_ERROR: 'Failed to remove item from cart',
+    ADD_ERROR: 'Failed to add item to cart',
+    CALCULATION_ERROR: 'Error calculating total',
+  },
+  AUTH: {
+    INVALID_TOKEN: 'Invalid token',
+    TOKEN_VALIDATION_ERROR: 'Token validation failed',
+    MISSING_TOKEN: 'Authorization token is required',
+  },
+  VALIDATION: {
+    USER_ID_REQUIRED: 'User ID is required',
+    PRODUCT_ID_REQUIRED: 'Product ID is required',
+    QUANTITY_REQUIRED: 'Quantity is required',
+    INVALID_QUANTITY: 'Quantity must be a positive number',
+  },
+  GENERAL: {
+    INTERNAL_SERVER_ERROR: 'Internal server error',
+    BAD_REQUEST: 'Bad request',
+    NOT_FOUND: 'Resource not found',
+  },
+} as const; 
