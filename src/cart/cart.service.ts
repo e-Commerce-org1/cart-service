@@ -9,6 +9,7 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { lastValueFrom } from 'rxjs';
 import { AuthService } from '../auth/services/auth.service';
 import { ProductService } from '../product/services/product.service';
+import { timeout, catchError } from 'rxjs/operators';
 
 @Injectable()
 export class CartService {
@@ -78,12 +79,22 @@ export class CartService {
       this.logger.debug(`Fetching product details for productId: ${addItemDto.productId}`);
       let productResponse;
       try {
-        productResponse = await lastValueFrom(this.productService.getProduct(addItemDto.productId));
-        console.log(productResponse)
+        productResponse = await lastValueFrom(
+          this.productService.getProduct(addItemDto.productId).pipe(
+            timeout(5000), // 5 second timeout
+            catchError(error => {
+              this.logger.error(`Product service error: ${error.message}`);
+              if (error.name === 'TimeoutError') {
+                throw new BadRequestException('Product service timeout');
+              }
+              throw new BadRequestException('Failed to fetch product details');
+            })
+          )
+        );
         this.logger.debug(`Product service response: ${JSON.stringify(productResponse)}`);
       } catch (error) {
         this.logger.error(`Product service error: ${error.message}`);
-        throw new BadRequestException('Failed to fetch product details');
+        throw new BadRequestException(error.message || 'Failed to fetch product details');
       }
 
       if (!productResponse || productResponse.code !== 200) {
@@ -236,7 +247,20 @@ export class CartService {
         throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
       }
 
-      cart.items = cart.items.filter((item) => item.productId !== productId);
+      const itemIndex = cart.items.findIndex(item => item.productId === productId);
+      if (itemIndex === -1) {
+        throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
+      }
+
+      // Decrease quantity by 1
+      if (cart.items[itemIndex].quantity > 1) {
+        cart.items[itemIndex].quantity -= 1;
+      } else {
+        // If quantity is 1, remove the item
+        cart.items.splice(itemIndex, 1);
+      }
+
+      // Recalculate total amount
       cart.totalAmount = this.calculateTotal(cart.items);
       
       try {

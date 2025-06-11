@@ -20,7 +20,7 @@ import { ProductGrpcService } from '../product/services/product-grpc.service';
         options: {
           package: 'auth',
           protoPath: join(__dirname, '../../src/proto/auth.proto'),
-          url: process.env.AUTH_SERVICE_URL || '172.50.3.60:5052',
+          url: process.env.AUTH_SERVICE_URL || '0.0.0.0:5052',
         },
       },
       {
@@ -29,7 +29,7 @@ import { ProductGrpcService } from '../product/services/product-grpc.service';
         options: {
           package: 'product',
           protoPath: join(__dirname, '../../src/proto/product.proto'),
-          url: process.env.PRODUCT_SERVICE_URL || '172.50.5.124:5001',
+          url: process.env.PRODUCT_SERVICE_URL || '0.0.0.0:5001',
         },
       },
     ]),
