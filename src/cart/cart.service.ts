@@ -43,169 +43,249 @@ export class CartService {
   }
 
   async getCart(userId: string): Promise<Cart> {
-    this.logger.debug(`Getting cart for user: ${userId}`);
-    const cart = await this.cartModel.findOne({ userId }).exec();
-    if (!cart) {
-      this.logger.warn(`Cart not found for user: ${userId}`);
-      throw new NotFoundException('Cart not found');
+    try {
+      if (!userId) {
+        throw new BadRequestException('User ID is required');
+      }
+
+      console.log(userId);
+
+      const cart = await this.cartModel.findOne({ userId });
+      if (!cart) {
+        throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
+      }
+      return cart;
+    } catch (error) {
+      this.logger.error(`Error getting cart for user ${userId}: ${error.message}`);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to retrieve cart');
     }
-    return cart;
   }
 
   async addItem(userId: string, addItemDto: AddItemDto): Promise<Cart> {
-    this.logger.debug(`Adding item to cart for user: ${userId}`, addItemDto);
-
     try {
-      // Check if product exists and has enough stock
-      const product = await lastValueFrom(this.productService.getProduct(addItemDto.productId));
+      if (!userId) {
+        throw new BadRequestException('User ID is required');
+      }
+
+      if (!addItemDto.productId) {
+        throw new BadRequestException('Product ID is required');
+      }
+
+      // Get product details from product service
+      this.logger.debug(`Fetching product details for productId: ${addItemDto.productId}`);
+      let productResponse;
+      try {
+        productResponse = await lastValueFrom(this.productService.getProduct(addItemDto.productId));
+        this.logger.debug(`Product service response: ${JSON.stringify(productResponse)}`);
+      } catch (error) {
+        this.logger.error(`Product service error: ${error.message}`);
+        throw new BadRequestException('Failed to fetch product details');
+      }
+
+      if (!productResponse || productResponse.code !== 200) {
+        this.logger.error(`Invalid product response: ${JSON.stringify(productResponse)}`);
+        throw new BadRequestException('Product not found or invalid');
+      }
+
+      let productData;
+      try {
+        productData = JSON.parse(productResponse.data);
+        this.logger.debug(`Parsed product data: ${JSON.stringify(productData)}`);
+      } catch (error) {
+        this.logger.error(`Failed to parse product data: ${error.message}`);
+        throw new BadRequestException('Invalid product data format');
+      }
+
+      if (!productData.price || !productData.name) {
+        throw new BadRequestException('Product data is incomplete');
+      }
       
-      if (!product) {
-        this.logger.warn(`Product not found: ${addItemDto.productId}`);
-        throw new BadRequestException('Product not found');
+      let cart;
+      try {
+        cart = await this.cartModel.findOne({ userId });
+      } catch (error) {
+        this.logger.error(`Database error while finding cart: ${error.message}`);
+        throw new InternalServerErrorException('Failed to access cart');
       }
-
-      if (product.stock < addItemDto.quantity) {
-        this.logger.warn(`Insufficient stock for product: ${addItemDto.productId}`);
-        throw new BadRequestException(`Insufficient stock. Available: ${product.stock}`);
-      }
-
-      let cart = await this.cartModel.findOne({ userId }).exec();
-
+      
       if (!cart) {
-        this.logger.debug(`Creating new cart for user: ${userId}`);
-        cart = new this.cartModel({
-          userId,
-          items: [],
-          totalAmount: 0,
-        });
+        cart = new this.cartModel({ userId, items: [], totalAmount: 0 });
       }
 
       const existingItemIndex = cart.items.findIndex(
-        item => item.productId === addItemDto.productId
+        (i) => i.productId === addItemDto.productId,
       );
 
       if (existingItemIndex > -1) {
-        // Check if updated quantity exceeds stock
-        const newQuantity = cart.items[existingItemIndex].quantity + addItemDto.quantity;
-        if (newQuantity > product.stock) {
-          this.logger.warn(`Insufficient stock for product: ${addItemDto.productId}`);
-          throw new BadRequestException(`Insufficient stock. Available: ${product.stock}`);
-        }
-        
-        cart.items[existingItemIndex].quantity = newQuantity;
+        cart.items[existingItemIndex].quantity += 1;
       } else {
         cart.items.push({
           productId: addItemDto.productId,
-          quantity: addItemDto.quantity,
-          price: product.price,
-          name: product.name,
-          image: product.image,
+          quantity: 1,
+          price: productData.price,
+          name: productData.name,
+          image: productData.imageUrl || ''
         });
       }
 
-      // Recalculate total amount
-      cart.totalAmount = cart.items.reduce(
-        (total, item) => total + item.price * item.quantity,
-        0
-      );
-
-      const savedCart = await cart.save();
-      this.logger.debug(`Item added to cart successfully for user: ${userId}`);
-      return savedCart;
+      cart.totalAmount = this.calculateTotal(cart.items);
+      
+      try {
+        return await cart.save();
+      } catch (error) {
+        this.logger.error(`Failed to save cart: ${error.message}`);
+        throw new InternalServerErrorException('Failed to update cart');
+      }
     } catch (error) {
-      this.logger.error(`Error adding item to cart: ${error.message}`, error.stack);
-      throw error;
+      this.logger.error(`Error adding item to cart for user ${userId}: ${error.message}`);
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to add item to cart');
     }
   }
 
   async updateItem(userId: string, productId: string, quantity: number): Promise<Cart> {
-    this.logger.debug(`Updating item quantity for user: ${userId}`, { productId, quantity });
-
     try {
-      // Check if product exists and has enough stock
-      const product = await lastValueFrom(this.productService.getProduct(productId));
-      
-      if (!product) {
-        this.logger.warn(`Product not found: ${productId}`);
-        throw new BadRequestException('Product not found');
+      if (!userId) {
+        throw new BadRequestException('User ID is required');
       }
 
-      if (product.stock < quantity) {
-        this.logger.warn(`Insufficient stock for product: ${productId}`);
-        throw new BadRequestException(`Insufficient stock. Available: ${product.stock}`);
+      if (!productId) {
+        throw new BadRequestException('Product ID is required');
       }
 
-      const cart = await this.cartModel.findOne({ userId }).exec();
+      if (quantity < 1) {
+        throw new BadRequestException('Quantity must be at least 1');
+      }
+
+      // Validate product exists
+      let productResponse;
+      try {
+        productResponse = await lastValueFrom(this.productService.getProduct(productId));
+      } catch (error) {
+        this.logger.error(`Product service error: ${error.message}`);
+        throw new BadRequestException('Failed to fetch product details');
+      }
+
+      if (!productResponse || productResponse.code !== 200) {
+        throw new BadRequestException('Product not found or invalid');
+      }
+
+      let cart;
+      try {
+        cart = await this.cartModel.findOne({ userId });
+      } catch (error) {
+        this.logger.error(`Database error while finding cart: ${error.message}`);
+        throw new InternalServerErrorException('Failed to access cart');
+      }
+
       if (!cart) {
-        this.logger.warn(`Cart not found for user: ${userId}`);
-        throw new NotFoundException('Cart not found');
+        throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
       }
 
-      const itemIndex = cart.items.findIndex(item => item.productId === productId);
+      const itemIndex = cart.items.findIndex(
+        (item) => item.productId === productId,
+      );
+
       if (itemIndex === -1) {
-        this.logger.warn(`Item not found in cart: ${productId}`);
-        throw new NotFoundException('Item not found in cart');
+        throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
       }
 
       cart.items[itemIndex].quantity = quantity;
-      cart.totalAmount = cart.items.reduce(
-        (total, item) => total + item.price * item.quantity,
-        0
-      );
-
-      const updatedCart = await cart.save();
-      this.logger.debug(`Item quantity updated successfully for user: ${userId}`);
-      return updatedCart;
+      cart.totalAmount = this.calculateTotal(cart.items);
+      
+      try {
+        return await cart.save();
+      } catch (error) {
+        this.logger.error(`Failed to save cart: ${error.message}`);
+        throw new InternalServerErrorException('Failed to update cart');
+      }
     } catch (error) {
-      this.logger.error(`Error updating item quantity: ${error.message}`, error.stack);
-      throw error;
+      this.logger.error(`Error updating item in cart for user ${userId}: ${error.message}`);
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to update cart item');
     }
   }
 
   async removeItem(userId: string, productId: string): Promise<Cart> {
-    this.logger.debug(`Removing item from cart for user: ${userId}`, { productId });
-
     try {
-      const cart = await this.cartModel.findOne({ userId }).exec();
-      if (!cart) {
-        this.logger.warn(`Cart not found for user: ${userId}`);
-        throw new NotFoundException('Cart not found');
+      if (!userId) {
+        throw new BadRequestException('User ID is required');
       }
 
-      cart.items = cart.items.filter(item => item.productId !== productId);
-      cart.totalAmount = cart.items.reduce(
-        (total, item) => total + item.price * item.quantity,
-        0
-      );
+      if (!productId) {
+        throw new BadRequestException('Product ID is required');
+      }
 
-      const updatedCart = await cart.save();
-      this.logger.debug(`Item removed successfully for user: ${userId}`);
-      return updatedCart;
+      let cart;
+      try {
+        cart = await this.cartModel.findOne({ userId });
+      } catch (error) {
+        this.logger.error(`Database error while finding cart: ${error.message}`);
+        throw new InternalServerErrorException('Failed to access cart');
+      }
+
+      if (!cart) {
+        throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
+      }
+
+      cart.items = cart.items.filter((item) => item.productId !== productId);
+      cart.totalAmount = this.calculateTotal(cart.items);
+      
+      try {
+        return await cart.save();
+      } catch (error) {
+        this.logger.error(`Failed to save cart: ${error.message}`);
+        throw new InternalServerErrorException('Failed to update cart');
+      }
     } catch (error) {
-      this.logger.error(`Error removing item from cart: ${error.message}`, error.stack);
-      throw error;
+      this.logger.error(`Error removing item from cart for user ${userId}: ${error.message}`);
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to remove item from cart');
     }
   }
 
   async clearCart(userId: string): Promise<Cart> {
-    this.logger.debug(`Clearing cart for user: ${userId}`);
-
     try {
-      const cart = await this.cartModel.findOne({ userId }).exec();
+      if (!userId) {
+        throw new BadRequestException('User ID is required');
+      }
+
+      let cart;
+      try {
+        cart = await this.cartModel.findOne({ userId });
+      } catch (error) {
+        this.logger.error(`Database error while finding cart: ${error.message}`);
+        throw new InternalServerErrorException('Failed to access cart');
+      }
+
       if (!cart) {
-        this.logger.warn(`Cart not found for user: ${userId}`);
-        throw new NotFoundException('Cart not found');
+        throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
       }
 
       cart.items = [];
       cart.totalAmount = 0;
-
-      const clearedCart = await cart.save();
-      this.logger.debug(`Cart cleared successfully for user: ${userId}`);
-      return clearedCart;
+      
+      try {
+        return await cart.save();
+      } catch (error) {
+        this.logger.error(`Failed to save cart: ${error.message}`);
+        throw new InternalServerErrorException('Failed to clear cart');
+      }
     } catch (error) {
-      this.logger.error(`Error clearing cart: ${error.message}`, error.stack);
-      throw error;
+      this.logger.error(`Error clearing cart for user ${userId}: ${error.message}`);
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to clear cart');
     }
   }
 

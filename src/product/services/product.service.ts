@@ -1,30 +1,18 @@
-import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
-import { ClientGrpc } from '@nestjs/microservices';
+import { Injectable } from '@nestjs/common';
 import { Observable } from 'rxjs';
-
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  stock: number;
-  image: string;
-}
-
-export interface IProductService {
-  getProduct(request: { id: string }): Observable<Product>;
-}
+import { ProductGrpcService } from './product-grpc.service';
 
 @Injectable()
-export class ProductService implements OnModuleInit {
-  private productService: IProductService;
+export class ProductService {
+  constructor(private readonly productGrpcService: ProductGrpcService) {}
 
-  constructor(@Inject('PRODUCT_PACKAGE') private client: ClientGrpc) {}
-
-  onModuleInit() {
-    this.productService = this.client.getService<IProductService>('ProductService');
-  }
-
-  getProduct(id: string): Observable<Product> {
-    return this.productService.getProduct({ id });
+  getProduct(productId: string): Observable<{
+    code: number;
+    status: string;
+    timestamp: string;
+    data: string;
+    error: string;
+  }> {
+    return this.productGrpcService.getProduct(productId);
   }
 } 

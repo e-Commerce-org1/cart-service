@@ -9,6 +9,7 @@ import { AuthService } from '../auth/services/auth.service';
 import { AuthGrpcService } from '../auth/services/auth-grpc.service';
 import { ProductService } from '../product/services/product.service';
 import { ProductGrpcService } from '../product/services/product-grpc.service';
+import { CartGrpcService } from './services/cart-grpc.service';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { ProductGrpcService } from '../product/services/product-grpc.service';
         options: {
           package: 'auth',
           protoPath: join(__dirname, '../../src/proto/auth.proto'),
-          url: process.env.AUTH_SERVICE_URL || '172.50.3.60:5051',
+          url: process.env.AUTH_SERVICE_URL || '172.50.3.60:5052',
         },
       },
       {
@@ -35,7 +36,14 @@ import { ProductGrpcService } from '../product/services/product-grpc.service';
     ]),
   ],
   controllers: [CartController],
-  providers: [CartService, AuthService, AuthGrpcService, ProductService, ProductGrpcService],
+  providers: [
+    CartService,
+    AuthService,
+    AuthGrpcService,
+    ProductService,
+    ProductGrpcService,
+    CartGrpcService,
+  ],
   exports: [CartService],
 })
 export class CartModule {} 
