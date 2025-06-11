@@ -4,12 +4,17 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
+import { CustomLogger } from './common/services/logger.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const logger = new CustomLogger('Bootstrap');
+  const app = await NestFactory.create(AppModule, {
+    logger: new CustomLogger(),
+  });
 
   // Enable CORS
   app.enableCors();
+  logger.log('CORS enabled');
 
   // Enable validation
   app.useGlobalPipes(
@@ -19,6 +24,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+  logger.log('Validation pipe enabled');
 
   // Swagger setup
   const config = new DocumentBuilder()
@@ -61,6 +67,7 @@ async function bootstrap() {
     },
     customSiteTitle: 'Cart Microservice API Documentation',
   });
+  logger.log('Swagger documentation enabled');
 
   // gRPC server setup
   app.connectMicroservice<MicroserviceOptions>({
@@ -71,14 +78,16 @@ async function bootstrap() {
       url: 'localhost:5000', 
     },
   });
+  logger.log('gRPC server configured');
 
   // Start all microservices
   await app.startAllMicroservices();
+  logger.log('All microservices started');
 
   // Start HTTP server
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`Application is running on: ${await app.getUrl()}`);
-  console.log(`Swagger documentation is available at: ${await app.getUrl()}/api`);
+  logger.log(`Application is running on: ${await app.getUrl()}`);
+  logger.log(`Swagger documentation is available at: ${await app.getUrl()}/api`);
 }
 bootstrap();

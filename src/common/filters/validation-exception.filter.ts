@@ -3,13 +3,13 @@ import {
   Catch,
   ArgumentsHost,
   BadRequestException,
-  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { CustomLogger } from '../services/logger.service';
 
 @Catch(BadRequestException)
 export class ValidationExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(ValidationExceptionFilter.name);
+  private readonly logger = new CustomLogger(ValidationExceptionFilter.name);
 
   catch(exception: BadRequestException, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
