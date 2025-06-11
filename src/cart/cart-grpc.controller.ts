@@ -8,7 +8,25 @@ export class CartGrpcController {
 
   @GrpcMethod('CartService', 'GetCart')
   async getCart(data: { userId: string }) {
-    return this.cartService.getCart(data.userId);
+    try {
+      const cart = await this.cartService.getCart(data.userId);
+      return {
+        userId: cart.userId,
+        items: cart.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name
+        })),
+        totalAmount: cart.totalAmount
+      };
+    } catch (error) {
+      return {
+        userId: data.userId,
+        items: [],
+        totalAmount: 0
+      };
+    }
   }
 
   @GrpcMethod('CartService', 'ClearCart')

@@ -43,8 +43,7 @@ export class CartController {
             productId: "product1",
             quantity: 2,
             price: 29.99,
-            name: "Product Name",
-            image: "https://example.com/image.jpg"
+            name: "Product Name"
           }
         ],
         totalAmount: 59.98
@@ -61,18 +60,26 @@ export class CartController {
       }
     }
   })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Cart not found',
-    schema: {
-      example: {
-        statusCode: 404,
-        message: "Cart not found"
-      }
-    }
-  })
   async getCart(@Request() req) {
-    return this.cartService.getCart(req.user.entityId);
+    try {
+      const cart = await this.cartService.getCart(req.user.entityId);
+      return {
+        userId: cart.userId,
+        items: cart.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name
+        })),
+        totalAmount: cart.totalAmount
+      };
+    } catch (error) {
+      return {
+        userId: req.user.entityId,
+        items: [],
+        totalAmount: 0
+      };
+    }
   }
 
   @Post('items')
@@ -87,8 +94,7 @@ export class CartController {
     examples: {
       example1: {
         value: {
-          productId: "product1",
-          quantity: 2
+          productId: "product1"
         }
       }
     }
@@ -103,13 +109,12 @@ export class CartController {
         items: [
           {
             productId: "product1",
-            quantity: 2,
+            quantity: 1,
             price: 29.99,
-            name: "Product Name",
-            image: "https://example.com/image.jpg"
+            name: "Product Name"
           }
         ],
-        totalAmount: 59.98
+        totalAmount: 29.99
       }
     }
   })
@@ -137,7 +142,25 @@ export class CartController {
     @Request() req,
     @Body() addItemDto: AddItemDto,
   ) {
-    return this.cartService.addItem(req.user.entityId, addItemDto);
+    try {
+      const cart = await this.cartService.addItem(req.user.entityId, addItemDto);
+      return {
+        userId: cart.userId,
+        items: cart.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name
+        })),
+        totalAmount: cart.totalAmount
+      };
+    } catch (error) {
+      return {
+        userId: req.user.entityId,
+        items: [],
+        totalAmount: 0
+      };
+    }
   }
 
   @Put('items/:productId')
@@ -174,8 +197,7 @@ export class CartController {
             productId: "product1",
             quantity: 3,
             price: 29.99,
-            name: "Product Name",
-            image: "https://example.com/image.jpg"
+            name: "Product Name"
           }
         ],
         totalAmount: 89.97
@@ -217,7 +239,25 @@ export class CartController {
     @Param('productId') productId: string,
     @Body() updateItemDto: UpdateItemDto,
   ) {
-    return this.cartService.updateItem(req.user.entityId, productId, updateItemDto.quantity);
+    try {
+      const cart = await this.cartService.updateItem(req.user.entityId, productId, updateItemDto.quantity);
+      return {
+        userId: cart.userId,
+        items: cart.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name
+        })),
+        totalAmount: cart.totalAmount
+      };
+    } catch (error) {
+      return {
+        userId: req.user.entityId,
+        items: [],
+        totalAmount: 0
+      };
+    }
   }
 
   @Delete('items/:productId')
@@ -267,7 +307,25 @@ export class CartController {
     @Request() req,
     @Param('productId') productId: string,
   ) {
-    return this.cartService.removeItem(req.user.entityId, productId);
+    try {
+      const cart = await this.cartService.removeItem(req.user.entityId, productId);
+      return {
+        userId: cart.userId,
+        items: cart.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name
+        })),
+        totalAmount: cart.totalAmount
+      };
+    } catch (error) {
+      return {
+        userId: req.user.entityId,
+        items: [],
+        totalAmount: 0
+      };
+    }
   }
 
   @Delete()
@@ -298,17 +356,25 @@ export class CartController {
       }
     }
   })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Cart not found',
-    schema: {
-      example: {
-        statusCode: 404,
-        message: "Cart not found"
-      }
-    }
-  })
   async clearCart(@Request() req) {
-    return this.cartService.clearCart(req.user.entityId);
+    try {
+      const cart = await this.cartService.clearCart(req.user.entityId);
+      return {
+        userId: cart.userId,
+        items: cart.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name
+        })),
+        totalAmount: cart.totalAmount
+      };
+    } catch (error) {
+      return {
+        userId: req.user.entityId,
+        items: [],
+        totalAmount: 0
+      };
+    }
   }
 } 
