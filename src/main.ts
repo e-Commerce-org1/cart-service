@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { join } from 'path';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -62,25 +62,23 @@ async function bootstrap() {
     customSiteTitle: 'Cart Microservice API Documentation',
   });
 
+  // gRPC server setup
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.GRPC,
+    options: {
+      package: 'cart',
+      protoPath: join(__dirname, '../src/proto/cart.proto'),
+      url: 'localhost:5000', 
+    },
+  });
+
+  // Start all microservices
+  await app.startAllMicroservices();
+
   // Start HTTP server
   const port = process.env.PORT || 3000;
   await app.listen(port);
   console.log(`Application is running on: ${await app.getUrl()}`);
   console.log(`Swagger documentation is available at: ${await app.getUrl()}/api`);
-
-  // Create and start gRPC server
-  const grpcApp = await NestFactory.createMicroservice<MicroserviceOptions>(
-    AppModule,
-    {
-      transport: Transport.GRPC,
-      options: {
-        package: 'cart',
-        protoPath: join(__dirname, '../src/proto/cart.proto'),
-        url: 'localhost:5000',
-      },
-    },
-  );
-  await grpcApp.listen();
-  console.log('gRPC server is running on: localhost:5000');
 }
 bootstrap();
