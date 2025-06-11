@@ -3,10 +3,10 @@ import { IsNumber, Min } from 'class-validator';
 
 export class UpdateItemDto {
   @ApiProperty({
-    description: 'New quantity for the item',
-    example: 3,
+    description: 'New quantity of the item',
+    example: 2,
     minimum: 1,
-    required: true
+    required: true,
   })
   @IsNumber()
   @Min(1)

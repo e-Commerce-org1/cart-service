@@ -3,14 +3,14 @@ import {
   Catch,
   ArgumentsHost,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { MongoError } from 'mongodb';
 import { Request, Response } from 'express';
-import { CustomLogger } from '../services/logger.service';
 
 @Catch(MongoError)
 export class MongoExceptionFilter implements ExceptionFilter {
-  private readonly logger = new CustomLogger(MongoExceptionFilter.name);
+  private readonly logger = new Logger(MongoExceptionFilter.name);
 
   catch(exception: MongoError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();

@@ -8,11 +8,9 @@ import {
   Param,
   UseGuards,
   Request,
-  HttpCode,
-  HttpStatus,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { Cart } from './schemas/cart.schema';
 import { AddItemDto } from './dto/add-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
@@ -26,355 +24,80 @@ export class CartController {
   constructor(private readonly cartService: CartService) {}
 
   @Get()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
-    summary: 'Get cart details',
-    description: 'Retrieves the current user\'s cart with all items and total amount'
-  })
+  @ApiOperation({ summary: 'Get cart details' })
   @ApiResponse({
     status: 200,
     description: 'Returns the cart details',
     type: Cart,
-    schema: {
-      example: {
-        userId: "user123",
-        items: [
-          {
-            productId: "product1",
-            quantity: 2,
-            price: 29.99,
-            name: "Product Name"
-          }
-        ],
-        totalAmount: 59.98
-      }
-    }
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Unauthorized - Invalid or missing token',
-    schema: {
-      example: {
-        statusCode: 401,
-        message: "No token provided"
-      }
-    }
-  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Cart not found' })
   async getCart(@Request() req) {
-    try {
-      const cart = await this.cartService.getCart(req.user.entityId);
-      return {
-        userId: cart.userId,
-        items: cart.items.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          name: item.name
-        })),
-        totalAmount: cart.totalAmount
-      };
-    } catch (error) {
-      return {
-        userId: req.user.entityId,
-        items: [],
-        totalAmount: 0
-      };
-    }
+    return this.cartService.getCart(req.user.entityId);
   }
 
   @Post('items')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ 
-    summary: 'Add item to cart',
-    description: 'Adds a new product to the cart or updates quantity if product already exists'
-  })
-  @ApiBody({
-    type: AddItemDto,
-    description: 'Product details to add to cart',
-    examples: {
-      example1: {
-        value: {
-          productId: "product1"
-        }
-      }
-    }
-  })
+  @ApiOperation({ summary: 'Add item to cart' })
   @ApiResponse({
     status: 201,
     description: 'Item added to cart successfully',
     type: Cart,
-    schema: {
-      example: {
-        userId: "user123",
-        items: [
-          {
-            productId: "product1",
-            quantity: 1,
-            price: 29.99,
-            name: "Product Name"
-          }
-        ],
-        totalAmount: 29.99
-      }
-    }
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Invalid input',
-    schema: {
-      example: {
-        statusCode: 400,
-        message: "Invalid product ID"
-      }
-    }
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Unauthorized - Invalid or missing token',
-    schema: {
-      example: {
-        statusCode: 401,
-        message: "No token provided"
-      }
-    }
-  })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async addItem(
     @Request() req,
     @Body() addItemDto: AddItemDto,
   ) {
-    try {
-      const cart = await this.cartService.addItem(req.user.entityId, addItemDto);
-      return {
-        userId: cart.userId,
-        items: cart.items.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          name: item.name
-        })),
-        totalAmount: cart.totalAmount
-      };
-    } catch (error) {
-      return {
-        userId: req.user.entityId,
-        items: [],
-        totalAmount: 0
-      };
-    }
+    return this.cartService.addItem(req.user.entityId, addItemDto);
   }
 
   @Put('items/:productId')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
-    summary: 'Update item quantity',
-    description: 'Updates the quantity of an existing item in the cart'
-  })
-  @ApiParam({
-    name: 'productId',
-    description: 'ID of the product to update',
-    example: 'product1'
-  })
-  @ApiBody({
-    type: UpdateItemDto,
-    description: 'New quantity for the item',
-    examples: {
-      example1: {
-        value: {
-          quantity: 3
-        }
-      }
-    }
-  })
+  @ApiOperation({ summary: 'Update item quantity' })
+  @ApiParam({ name: 'productId', description: 'Product ID' })
   @ApiResponse({
     status: 200,
     description: 'Item quantity updated successfully',
     type: Cart,
-    schema: {
-      example: {
-        userId: "user123",
-        items: [
-          {
-            productId: "product1",
-            quantity: 3,
-            price: 29.99,
-            name: "Product Name"
-          }
-        ],
-        totalAmount: 89.97
-      }
-    }
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Invalid input',
-    schema: {
-      example: {
-        statusCode: 400,
-        message: "Quantity must be at least 1"
-      }
-    }
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Unauthorized - Invalid or missing token',
-    schema: {
-      example: {
-        statusCode: 401,
-        message: "No token provided"
-      }
-    }
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Cart or item not found',
-    schema: {
-      example: {
-        statusCode: 404,
-        message: "Item not found in cart"
-      }
-    }
-  })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Cart or item not found' })
   async updateItem(
     @Request() req,
     @Param('productId') productId: string,
     @Body() updateItemDto: UpdateItemDto,
   ) {
-    try {
-      const cart = await this.cartService.updateItem(req.user.entityId, productId, updateItemDto.quantity);
-      return {
-        userId: cart.userId,
-        items: cart.items.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          name: item.name
-        })),
-        totalAmount: cart.totalAmount
-      };
-    } catch (error) {
-      return {
-        userId: req.user.entityId,
-        items: [],
-        totalAmount: 0
-      };
-    }
+    return this.cartService.updateItem(req.user.entityId, productId, updateItemDto.quantity);
   }
 
   @Delete('items/:productId')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
-    summary: 'Remove item from cart',
-    description: 'Removes a specific item from the cart'
-  })
-  @ApiParam({
-    name: 'productId',
-    description: 'ID of the product to remove',
-    example: 'product1'
-  })
+  @ApiOperation({ summary: 'Remove item from cart' })
+  @ApiParam({ name: 'productId', description: 'Product ID' })
   @ApiResponse({
     status: 200,
     description: 'Item removed successfully',
     type: Cart,
-    schema: {
-      example: {
-        userId: "user123",
-        items: [],
-        totalAmount: 0
-      }
-    }
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Unauthorized - Invalid or missing token',
-    schema: {
-      example: {
-        statusCode: 401,
-        message: "No token provided"
-      }
-    }
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Cart or item not found',
-    schema: {
-      example: {
-        statusCode: 404,
-        message: "Item not found in cart"
-      }
-    }
-  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Cart or item not found' })
   async removeItem(
     @Request() req,
     @Param('productId') productId: string,
   ) {
-    try {
-      const cart = await this.cartService.removeItem(req.user.entityId, productId);
-      return {
-        userId: cart.userId,
-        items: cart.items.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          name: item.name
-        })),
-        totalAmount: cart.totalAmount
-      };
-    } catch (error) {
-      return {
-        userId: req.user.entityId,
-        items: [],
-        totalAmount: 0
-      };
-    }
+    return this.cartService.removeItem(req.user.entityId, productId);
   }
 
   @Delete()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
-    summary: 'Clear cart',
-    description: 'Removes all items from the cart'
-  })
+  @ApiOperation({ summary: 'Clear cart' })
   @ApiResponse({
     status: 200,
     description: 'Cart cleared successfully',
     type: Cart,
-    schema: {
-      example: {
-        userId: "user123",
-        items: [],
-        totalAmount: 0
-      }
-    }
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Unauthorized - Invalid or missing token',
-    schema: {
-      example: {
-        statusCode: 401,
-        message: "No token provided"
-      }
-    }
-  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Cart not found' })
   async clearCart(@Request() req) {
-    try {
-      const cart = await this.cartService.clearCart(req.user.entityId);
-      return {
-        userId: cart.userId,
-        items: cart.items.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          name: item.name
-        })),
-        totalAmount: cart.totalAmount
-      };
-    } catch (error) {
-      return {
-        userId: req.user.entityId,
-        items: [],
-        totalAmount: 0
-      };
-    }
+    return this.cartService.clearCart(req.user.entityId);
   }
 } 
