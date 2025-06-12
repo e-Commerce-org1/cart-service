@@ -2,8 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Logger } from '@nestjs/common';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { join } from 'path';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS
@@ -60,9 +64,23 @@ async function bootstrap() {
     customSiteTitle: 'Cart Microservice API Documentation',
   });
 
-  const port = process.env.PORT || 3002;
+  // Start gRPC server
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.GRPC,
+    options: {
+      package: 'cart',
+      protoPath: join(__dirname, '../src/proto/cart.proto'),
+      url: '0.0.0.0:5000', // Cart service will listen on port 5000
+    },
+  });
+
+  await app.startAllMicroservices();
+  logger.log('gRPC server started on port 5000');
+
+  // Start HTTP server
+  const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
+  console.log(`HTTP server started on port ${port}`);
   console.log(`Swagger documentation is available at: http://localhost:${port}/api`);
 }
 bootstrap();
