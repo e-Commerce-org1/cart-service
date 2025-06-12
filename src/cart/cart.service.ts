@@ -139,25 +139,99 @@ export class CartService {
         throw new BadRequestException(ERROR_MESSAGES.CART.INCOMPLETE_PRODUCT_DATA);
       }
 
-      return productData;
+      // Validate variants data
+      if (!Array.isArray(productData.variants)) {
+        this.logger.warn(`Product ${productId} has no variants array`);
+        return {
+          ...productData,
+          color: '',
+          size: '',
+          stock: 0
+        };
+      }
+
+      // Validate and get default variant
+      const defaultVariant = this.validateAndGetDefaultVariant(productData.variants, productId);
+      
+      return {
+        ...productData,
+        color: defaultVariant.color || '',
+        size: defaultVariant.size || '',
+        stock: defaultVariant.stock || 0
+      };
     } catch (error) {
       this.logger.error(`Error fetching product details: ${error.message}`);
       throw error;
     }
   }
 
+  private validateAndGetDefaultVariant(variants: any[], productId: string) {
+    if (!variants.length) {
+      this.logger.warn(`Product ${productId} has empty variants array`);
+      return {};
+    }
+
+    // Validate each variant
+    const validVariants = variants.filter(variant => {
+      const isValid = typeof variant === 'object' && 
+                     variant !== null &&
+                     (typeof variant.color === 'string' || !variant.color) &&
+                     (typeof variant.size === 'string' || !variant.size) &&
+                     (typeof variant.stock === 'number' || !variant.stock);
+      
+      if (!isValid) {
+        this.logger.warn(`Invalid variant found in product ${productId}: ${JSON.stringify(variant)}`);
+      }
+      return isValid;
+    });
+
+    if (!validVariants.length) {
+      this.logger.warn(`No valid variants found for product ${productId}`);
+      return {};
+    }
+
+    return validVariants[0];
+  }
+
   private async addOrUpdateCartItem(cart: CartDocument, addItemDto: AddItemDto, product: any): Promise<void> {
-    const existingItemIndex = cart.items.findIndex(item => item.productId === addItemDto.productId);
+    // Validate color and size
+    if (typeof product.color !== 'string' || typeof product.size !== 'string') {
+      this.logger.warn(`Invalid color or size for product ${addItemDto.productId}`);
+      product.color = '';
+      product.size = '';
+    }
+
+    // Validate stock
+    if (typeof product.stock !== 'number' || product.stock < 0) {
+      this.logger.warn(`Invalid stock for product ${addItemDto.productId}`);
+      product.stock = 0;
+    }
+
+    const existingItemIndex = cart.items.findIndex(item => 
+      item.productId === addItemDto.productId && 
+      item.color === product.color && 
+      item.size === product.size
+    );
 
     if (existingItemIndex > -1) {
+      // Check if adding one more item would exceed stock
+      if (cart.items[existingItemIndex].quantity + 1 > product.stock) {
+        throw new BadRequestException(`Not enough stock available. Only ${product.stock} items left.`);
+      }
       cart.items[existingItemIndex].quantity += 1;
     } else {
+      // Check if there's any stock available
+      if (product.stock < 1) {
+        throw new BadRequestException('Product is out of stock');
+      }
       cart.items.push({
         productId: addItemDto.productId,
         quantity: 1,
         price: product.price,
         name: product.name,
-        image: product.imageUrl || ''
+        image: product.imageUrl || '',
+        color: product.color || '',
+        size: product.size || ''
       });
     }
 

@@ -42,6 +42,12 @@ export class CartItem {
   })
   @Prop()
   image?: string;
+
+  @Prop()
+  color: string;
+
+  @Prop()
+  size: string;
 }
 
 @Schema({ timestamps: true })

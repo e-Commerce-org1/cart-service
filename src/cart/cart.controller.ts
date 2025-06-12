@@ -20,7 +20,7 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 @ApiTags('Cart')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthGuard)
-@Controller('cart')
+@Controller('api/v1/cart')
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
