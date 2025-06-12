@@ -5,7 +5,6 @@ import { Cart, CartDocument } from './schemas/cart.schema';
 import { ERROR_MESSAGES } from '../common/constants/error-messages';
 import { Logger } from '@nestjs/common';
 import { AddItemDto } from './dto/add-item.dto';
-import { UpdateItemDto } from './dto/update-item.dto';
 import { lastValueFrom } from 'rxjs';
 import { timeout, catchError } from 'rxjs/operators';
 import { AuthService } from '../auth/services/auth.service';

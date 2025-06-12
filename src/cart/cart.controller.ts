@@ -8,12 +8,13 @@ import {
   Param,
   UseGuards,
   Request,
+  Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { Cart } from './schemas/cart.schema';
 import { AddItemDto } from './dto/add-item.dto';
-import { UpdateItemDto } from './dto/update-item.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 
 @ApiTags('Cart')
@@ -55,6 +56,7 @@ export class CartController {
   @Put('items/:productId')
   @ApiOperation({ summary: 'Update item quantity' })
   @ApiParam({ name: 'productId', description: 'Product ID' })
+  @ApiQuery({ name: 'quantity', description: 'New quantity for the item', required: true, type: Number })
   @ApiResponse({
     status: 200,
     description: 'Item quantity updated successfully',
@@ -66,9 +68,13 @@ export class CartController {
   async updateItem(
     @Request() req,
     @Param('productId') productId: string,
-    @Body() updateItemDto: UpdateItemDto,
+    @Query('quantity') quantity: string,
   ) {
-    return this.cartService.updateItem(req.user.entityId, productId, updateItemDto.quantity);
+    const quantityNumber = Number(quantity);
+    if (isNaN(quantityNumber)) {
+      throw new BadRequestException('Quantity must be a number');
+    }
+    return this.cartService.updateItem(req.user.entityId, productId, quantityNumber);
   }
 
   @Delete('items/:productId')
