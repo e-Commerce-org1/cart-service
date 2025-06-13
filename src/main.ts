@@ -10,10 +10,8 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS
   app.enableCors();
 
-  // Enable validation
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -22,7 +20,7 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger setup
+
   const config = new DocumentBuilder()
     .setTitle('Cart Microservice API')
     .setDescription(`
@@ -64,18 +62,31 @@ async function bootstrap() {
     customSiteTitle: 'Cart Microservice API Documentation',
   });
 
-  // Start gRPC server
+
+  logger.log('Attempting to connect gRPC microservice...');
+  console.log(' Starting gRPC server configuration...');
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
     options: {
       package: 'cart',
       protoPath: join(__dirname, '../src/proto/cart.proto'),
-      url: '0.0.0.0:5000', // Cart service will listen on port 5000
+      url: '0.0.0.0:7777', 
     },
   });
 
-  await app.startAllMicroservices();
-  logger.log('gRPC server started on port 5000');
+  console.log('gRPC configuration completed');
+
+  try {
+    console.log('Starting all microservices...');
+    await app.startAllMicroservices();
+    console.log('gRPC server successfully started on port 7777');
+    logger.log('gRPC server started on port 7777');
+  } catch (error) {
+    console.error(' ERROR: Failed to start gRPC server');
+    logger.error(`Failed to start gRPC server: ${error.message}`);
+    console.error('Full error:', error);
+    process.exit(1);
+  }
 
   // Start HTTP server
   const port = process.env.PORT || 3000;

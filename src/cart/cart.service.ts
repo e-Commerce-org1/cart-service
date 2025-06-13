@@ -20,7 +20,7 @@ export class CartService {
     private productService: ProductService,
   ) {}
 
-  async getCart(userId: string): Promise<Cart> {
+  async getCartDetails(userId: string): Promise<Cart> {
     this.validateUserId(userId);
     const cart = await this.findCartByUserId(userId);
     if (!cart) {

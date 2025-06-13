@@ -1,26 +1,26 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Controller, Injectable, Logger } from '@nestjs/common';
 import { CartService } from '../cart.service';
 import { GrpcMethod } from '@nestjs/microservices';
+import { UserIdRequest, CartDetailsResponse, ClearCartResponse } from '../dto/cart.interface';
 
-@Injectable()
+@Controller()
 export class CartGrpcService {
   private readonly logger = new Logger(CartGrpcService.name);
 
   constructor(private readonly cartService: CartService) {}
 
   @GrpcMethod('CartService', 'GetCartDetails')
-  async getCartDetails(data: { userId: string }) {
+  async getCartDetails(data: UserIdRequest): Promise<CartDetailsResponse> {
     try {
-      const cart = await this.cartService.getCart(data.userId);
+      const cart = await this.cartService.getCartDetails(data.userId);
       
-      // Transform cart items to match CartItem format
       const items = cart.items.map(item => ({
         productId: item.productId,
-        description: item.name, // Using name as description
-        color: '', // Default empty as we don't have color
-        size: '', // Default empty as we don't have size
+        description: item.name, 
+        color: item.color || '', 
+        size: item.size || '', 
         quantity: item.quantity,
-        price: Math.round(item.price) // Convert to int32
+        price: Math.round(item.price) 
       }));
 
       return { items };
@@ -31,7 +31,7 @@ export class CartGrpcService {
   }
 
   @GrpcMethod('CartService', 'ClearCart')
-  async clearCart(data: { userId: string }) {
+  async clearCart(data: UserIdRequest): Promise<ClearCartResponse> {
     try {
       await this.cartService.clearCart(data.userId);
       return { success: true };

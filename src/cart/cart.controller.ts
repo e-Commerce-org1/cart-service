@@ -16,6 +16,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth }
 import { Cart } from './schemas/cart.schema';
 import { AddItemDto } from './dto/add-item.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
+import { UserIdRequest } from './dto/cart.interface';
 
 @ApiTags('Cart')
 @ApiBearerAuth('JWT-auth')
@@ -33,8 +34,9 @@ export class CartController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Cart not found' })
-  async getCart(@Request() req) {
-    return this.cartService.getCart(req.user.entityId);
+
+  async getCartDetails(userId: string) {
+    return this.cartService.getCartDetails(userId);
   }
 
   @Post('items')
@@ -46,6 +48,7 @@ export class CartController {
   })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+
   async addItem(
     @Request() req,
     @Body() addItemDto: AddItemDto,
@@ -65,6 +68,7 @@ export class CartController {
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Cart or item not found' })
+  
   async updateItem(
     @Request() req,
     @Param('productId') productId: string,
