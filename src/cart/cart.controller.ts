@@ -37,7 +37,7 @@ export class CartController {
     return this.cartService.getCartDetails(req.user.entityId);
   }
 
-  @Post('items')
+  @Post()
   @ApiAddItem()
   async addItem(
     @Request() req,
@@ -46,7 +46,7 @@ export class CartController {
     return this.cartService.addItem(req.user.entityId, addItemDto);
   }
 
-  @Put('items/:productId')
+  @Put('/:productId')
   @ApiUpdateItem()
   async updateItem(
     @Request() req,
@@ -60,7 +60,7 @@ export class CartController {
     return this.cartService.updateItem(req.user.entityId, productId, quantityNumber);
   }
 
-  @Delete('items/:productId')
+  @Delete('/:productId')
   @ApiRemoveItem()
   async removeItem(
     @Request() req,
