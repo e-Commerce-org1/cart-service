@@ -35,8 +35,8 @@ export class CartController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Cart not found' })
 
-  async getCartDetails(userId: string) {
-    return this.cartService.getCartDetails(userId);
+  async getCartDetails(data: {userId : string}) {
+    return this.cartService.getCartDetails(data.userId);
   }
 
   @Post('items')
@@ -107,7 +107,7 @@ export class CartController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Cart not found' })
-  async clearCart(@Request() req) {
-    return this.cartService.clearCart(req.user.entityId);
+  async clearCart(data: {userId : string}) {
+    return this.cartService.clearCart(data.userId);
   }
 } 

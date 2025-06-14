@@ -10,6 +10,7 @@ import { AuthGrpcService } from '../auth/services/auth-grpc.service';
 import { ProductService } from '../product/services/product.service';
 import { ProductGrpcService } from '../product/services/product-grpc.service';
 import { CartGrpcService } from './grpc/cart.grpc.service';
+import { CartGrpcController } from './grpc/cart.grpc.controller';
 
 @Module({
   imports: [
@@ -35,8 +36,8 @@ import { CartGrpcService } from './grpc/cart.grpc.service';
       },
     ]),
   ],
-  controllers: [CartController,CartGrpcService],
-  providers: [CartService, AuthService, AuthGrpcService, ProductService, ProductGrpcService],
+  controllers: [CartController, CartGrpcController],
+  providers: [CartService, AuthService, AuthGrpcService, ProductService, ProductGrpcService, CartGrpcService],
   exports: [CartService],
 })
 export class CartModule {} 
