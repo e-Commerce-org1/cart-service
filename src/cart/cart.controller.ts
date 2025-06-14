@@ -33,8 +33,8 @@ export class CartController {
 
   @Get()
   @ApiGetCartDetails()
-  async getCartDetails(userId: string) {
-    return this.cartService.getCartDetails(userId);
+  async getCartDetails(@Request() req) {
+    return this.cartService.getCartDetails(req.user.entityId);
   }
 
   @Post('items')
