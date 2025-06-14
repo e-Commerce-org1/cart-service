@@ -12,43 +12,33 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { Cart } from './schemas/cart.schema';
 import { AddItemDto } from './dto/add-item.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { UserIdRequest } from './dto/cart.interface';
+import {
+  ApiCartTags,
+  ApiGetCartDetails,
+  ApiAddItem,
+  ApiUpdateItem,
+  ApiRemoveItem,
+  ApiClearCart,
+} from './swagger/cart.swagger';
 
-@ApiTags('Cart')
-@ApiBearerAuth('JWT-auth')
+@ApiCartTags()
 @UseGuards(AuthGuard)
 @Controller('api/v1/cart')
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get cart details' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns the cart details',
-    type: Cart,
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'Cart not found' })
-
-  async getCartDetails(data: {userId : string}) {
-    return this.cartService.getCartDetails(data.userId);
+  @ApiGetCartDetails()
+  async getCartDetails(userId: string) {
+    return this.cartService.getCartDetails(userId);
   }
 
   @Post('items')
-  @ApiOperation({ summary: 'Add item to cart' })
-  @ApiResponse({
-    status: 201,
-    description: 'Item added to cart successfully',
-    type: Cart,
-  })
-  @ApiResponse({ status: 400, description: 'Invalid input' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-
+  @ApiAddItem()
   async addItem(
     @Request() req,
     @Body() addItemDto: AddItemDto,
@@ -57,18 +47,7 @@ export class CartController {
   }
 
   @Put('items/:productId')
-  @ApiOperation({ summary: 'Update item quantity' })
-  @ApiParam({ name: 'productId', description: 'Product ID' })
-  @ApiQuery({ name: 'quantity', description: 'New quantity for the item', required: true, type: Number })
-  @ApiResponse({
-    status: 200,
-    description: 'Item quantity updated successfully',
-    type: Cart,
-  })
-  @ApiResponse({ status: 400, description: 'Invalid input' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'Cart or item not found' })
-  
+  @ApiUpdateItem()
   async updateItem(
     @Request() req,
     @Param('productId') productId: string,
@@ -82,15 +61,7 @@ export class CartController {
   }
 
   @Delete('items/:productId')
-  @ApiOperation({ summary: 'Remove item from cart' })
-  @ApiParam({ name: 'productId', description: 'Product ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Item removed successfully',
-    type: Cart,
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'Cart or item not found' })
+  @ApiRemoveItem()
   async removeItem(
     @Request() req,
     @Param('productId') productId: string,
@@ -99,15 +70,8 @@ export class CartController {
   }
 
   @Delete()
-  @ApiOperation({ summary: 'Clear cart' })
-  @ApiResponse({
-    status: 200,
-    description: 'Cart cleared successfully',
-    type: Cart,
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'Cart not found' })
-  async clearCart(data: {userId : string}) {
-    return this.cartService.clearCart(data.userId);
+  @ApiClearCart()
+  async clearCart(@Request() req) {
+    return this.cartService.clearCart(req.user.entityId);
   }
 } 
