@@ -1,6 +1,6 @@
 import { Controller, Logger } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
-import { UserIdRequest, CartDetailsResponse, ClearCartResponse } from '../dto/cart.interface';
+import { UserIdRequest, CartDetailsResponse, ClearCartResponse } from '../interfaces/cart.interface';
 import { CartGrpcService } from './cart.grpc.service';
 
 @Controller()

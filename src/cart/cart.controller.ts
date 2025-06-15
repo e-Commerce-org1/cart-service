@@ -13,9 +13,9 @@ import {
 } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { Cart } from './schemas/cart.schema';
-import { AddItemDto } from './dto/add-item.dto';
-import { AuthGuard } from '../auth/guards/auth.guard';
-import { UserIdRequest } from './dto/cart.interface';
+import { AddItemDto } from './interfaces/add-item.interface';
+import { AuthGuard } from '../middleware/guards/auth.guard';
+import { UserIdRequest } from './interfaces/cart.interface';
 import {
   ApiCartTags,
   ApiGetCartDetails,

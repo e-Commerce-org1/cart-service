@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cart, CartDocument } from '../schemas/cart.schema';
-import { UserIdRequest, CartDetailsResponse, ClearCartResponse } from '../dto/cart.interface';
+import { UserIdRequest, CartDetailsResponse, ClearCartResponse } from '../interfaces/cart.interface';
 
 @Injectable()
 export class CartGrpcService {

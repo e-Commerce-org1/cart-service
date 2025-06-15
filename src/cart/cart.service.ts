@@ -4,10 +4,10 @@ import { Model } from 'mongoose';
 import { Cart, CartDocument } from './schemas/cart.schema';
 import { ERROR_MESSAGES } from '../common/constants/error-messages';
 import { Logger } from '@nestjs/common';
-import { AddItemDto } from './dto/add-item.dto';
+import { AddItemDto } from './interfaces/add-item.interface';
 import { lastValueFrom } from 'rxjs';
 import { timeout, catchError } from 'rxjs/operators';
-import { AuthService } from '../auth/services/auth.service';
+import { AuthService } from '../middleware/services/auth.service';
 import { ProductService } from '../product/services/product.service';
 
 @Injectable()
