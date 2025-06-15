@@ -11,10 +11,12 @@ import { ProductService } from '../product/services/product.service';
 import { ProductGrpcService } from '../product/services/product-grpc.service';
 import { CartGrpcService } from './grpc/cart.grpc.service';
 import { CartGrpcController } from './grpc/cart.grpc.controller';
+import { AppCacheModule } from '../cache/cache.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Cart.name, schema: CartSchema }]),
+    AppCacheModule,
     ClientsModule.register([
       {
         name: 'AUTH_PACKAGE',
