@@ -9,43 +9,23 @@ import { lastValueFrom } from 'rxjs';
 import { timeout, catchError } from 'rxjs/operators';
 import { AuthService } from '../middleware/services/auth.service';
 import { ProductService } from '../product/services/product.service';
-import { RedisService } from '../cache/services/redis.service';
 
 @Injectable()
 export class CartService {
   private readonly logger = new Logger(CartService.name);
-  private readonly CACHE_TTL = 3600; // 1 hour in seconds
 
   constructor(
     @InjectModel(Cart.name) private cartModel: Model<CartDocument>,
-    private redisService: RedisService,
     private authService: AuthService,
     private productService: ProductService,
   ) {}
 
-  private getCacheKey(userId: string): string {
-    return `cart:${userId}`;
-  }
-
   async getCartDetails(userId: string): Promise<Cart> {
     this.validateUserId(userId);
-    
-    // Try to get from cache first
-    const cacheKey = this.getCacheKey(userId);
-    const cachedCart = await this.redisService.get<Cart>(cacheKey);
-    
-    if (cachedCart) {
-      return cachedCart;
-    }
-
-    // If not in cache, get from database
     const cart = await this.findCartByUserId(userId);
     if (!cart) {
       throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
     }
-
-    // Store in cache
-    await this.redisService.set(cacheKey, cart, this.CACHE_TTL);
     return cart;
   }
 
@@ -61,13 +41,7 @@ export class CartService {
     }
 
     await this.addOrUpdateCartItem(cart, addItemDto, product);
-    const updatedCart = await this.saveCart(cart);
-
-    // Update cache
-    const cacheKey = this.getCacheKey(userId);
-    await this.redisService.set(cacheKey, updatedCart, this.CACHE_TTL);
-
-    return updatedCart;
+    return this.saveCart(cart);
   }
 
   async updateItem(userId: string, productId: string, quantity: number): Promise<Cart> {
@@ -82,13 +56,7 @@ export class CartService {
     }
 
     await this.updateCartItemQuantity(cart, productId, quantity, product);
-    const updatedCart = await this.saveCart(cart);
-
-    // Update cache
-    const cacheKey = this.getCacheKey(userId);
-    await this.redisService.set(cacheKey, updatedCart, this.CACHE_TTL);
-
-    return updatedCart;
+    return this.saveCart(cart);
   }
 
   async removeItem(userId: string, productId: string): Promise<Cart> {
@@ -101,13 +69,7 @@ export class CartService {
     }
 
     await this.decreaseItemQuantity(cart, productId);
-    const updatedCart = await this.saveCart(cart);
-
-    // Update cache
-    const cacheKey = this.getCacheKey(userId);
-    await this.redisService.set(cacheKey, updatedCart, this.CACHE_TTL);
-
-    return updatedCart;
+    return this.saveCart(cart);
   }
 
   async clearCart(userId: string): Promise<Cart> {
@@ -120,13 +82,7 @@ export class CartService {
 
     cart.items = [];
     cart.totalAmount = 0;
-    const updatedCart = await this.saveCart(cart);
-
-    // Update cache
-    const cacheKey = this.getCacheKey(userId);
-    await this.redisService.set(cacheKey, updatedCart, this.CACHE_TTL);
-
-    return updatedCart;
+    return this.saveCart(cart);
   }
 
   // Private helper methods
