@@ -1,16 +1,24 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { MongoExceptionFilter } from './common/filters/mongo-exception.filter';
+import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   app.enableCors();
+
+  app.useGlobalFilters(
+    new HttpExceptionFilter(),
+    new MongoExceptionFilter(),
+    new ValidationExceptionFilter()
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -70,7 +78,7 @@ async function bootstrap() {
     options: {
       package: 'cart',
       protoPath: join(__dirname, '../src/proto/cart.proto'),
-      url: '0.0.0.0:7777', 
+      url: '0.0.0.0:6666', 
     },
   });
 
