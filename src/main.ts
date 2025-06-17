@@ -33,17 +33,6 @@ async function bootstrap() {
     .setTitle('Cart Microservice API')
     .setDescription(`
       The Cart Microservice API provides endpoints for managing shopping carts.
-      
-      ## Features
-      - Get cart details
-      - Add items to cart
-      - Update item quantities
-      - Remove items from cart
-      - Clear cart
-      
-      ## Authentication
-      All endpoints require a valid JWT token in the Authorization header.
-      Format: \`Bearer <token>\`
     `)
     .setVersion('1.0')
     .addTag('cart', 'Cart management endpoints')
@@ -78,28 +67,19 @@ async function bootstrap() {
     options: {
       package: 'cart',
       protoPath: join(__dirname, '../src/proto/cart.proto'),
-      url: '0.0.0.0:6666', 
+      url: '0.0.0.0:7777', 
     },
   });
 
-  console.log('gRPC configuration completed');
-
   try {
-    console.log('Starting all microservices...');
     await app.startAllMicroservices();
-    console.log('gRPC server successfully started on port 7777');
     logger.log('gRPC server started on port 7777');
   } catch (error) {
-    console.error(' ERROR: Failed to start gRPC server');
     logger.error(`Failed to start gRPC server: ${error.message}`);
-    console.error('Full error:', error);
     process.exit(1);
   }
 
-  // Start HTTP server
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`HTTP server started on port ${port}`);
-  console.log(`Swagger documentation is available at: http://localhost:${port}/api`);
 }
 bootstrap();

@@ -1,6 +1,7 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Cart } from '../schemas/cart.schema';
+import { UpdateSizeDto } from '../interfaces/update-size.interface';
 
 export const ApiCartTags = () => applyDecorators(
   ApiTags('Cart'),
@@ -99,6 +100,34 @@ export const ApiUpdateItem = () => applyDecorators(
     description: 'Internal Server Error - Something went wrong on the server' 
   })
 );
+
+export const ApiUpdateItemSize = () => {
+  return applyDecorators(
+    ApiOperation({ summary: 'Update item size in cart' }),
+    ApiParam({
+      name: 'productId',
+      description: 'ID of the product to update',
+      type: String,
+    }),
+    ApiBody({
+      type: UpdateSizeDto,
+      description: 'New size for the item',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Item size updated successfully',
+      type: Cart,
+    }),
+    ApiResponse({
+      status: 400,
+      description: 'Invalid size or size not available for product',
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Cart or item not found',
+    }),
+  );
+};
 
 export const ApiRemoveItem = () => applyDecorators(
   ApiOperation({ summary: 'Remove item from cart' }),

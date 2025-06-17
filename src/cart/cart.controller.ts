@@ -14,6 +14,7 @@ import {
 import { CartService } from './cart.service';
 import { Cart } from './schemas/cart.schema';
 import { AddItemDto } from './interfaces/add-item.interface';
+import { UpdateSizeDto } from './interfaces/update-size.interface';
 import { AuthGuard } from '../middleware/guards/auth.guard';
 import { UserIdRequest } from './interfaces/cart.interface';
 import {
@@ -23,6 +24,7 @@ import {
   ApiUpdateItem,
   ApiRemoveItem,
   ApiClearCart,
+  ApiUpdateItemSize,
 } from './swagger/cart.swagger';
 
 @ApiCartTags()
@@ -58,6 +60,16 @@ export class CartController {
       throw new BadRequestException('Quantity must be a number');
     }
     return this.cartService.updateItem(req.user.entityId, productId, quantityNumber);
+  }
+
+  @Put('/:productId/size')
+  @ApiUpdateItemSize()
+  async updateItemSize(
+    @Request() req,
+    @Param('productId') productId: string,
+    @Body() updateSizeDto: UpdateSizeDto,
+  ) {
+    return this.cartService.updateItemSize(req.user.entityId, productId, updateSizeDto.size);
   }
 
   @Delete('/:productId')

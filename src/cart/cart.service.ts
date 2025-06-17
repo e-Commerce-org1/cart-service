@@ -47,16 +47,113 @@ export class CartService {
   async updateItem(userId: string, productId: string, quantity: number): Promise<Cart> {
     this.validateUserId(userId);
     this.validateProductId(productId);
+    this.validateQuantity(quantity);
 
-    const product = await this.getProductDetails(productId);
-    const cart = await this.findCartByUserId(userId);
-    
-    if (!cart) {
-      throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
+    try {
+      const cart = await this.cartModel.findOne({ 
+        userId,
+        'items.productId': productId 
+      });
+
+      if (!cart) {
+        throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
+      }
+
+
+      const product = await this.getProductDetails(productId);
+      
+      if (quantity > product.stock) {
+        throw new BadRequestException(`Not enough stock available. Only ${product.stock} items left.`);
+      }
+
+      const result = await this.cartModel.updateOne(
+        { 
+          userId,
+          'items.productId': productId 
+        },
+        { 
+          $set: { 
+            'items.$.quantity': quantity,
+            totalAmount: this.calculateTotal(
+              cart.items.map(item => 
+                item.productId === productId 
+                  ? { ...item, quantity } 
+                  : item
+              )
+            )
+          }
+        }
+      );
+
+      if (result.modifiedCount === 0) {
+        throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
+      }
+
+      const updatedCart = await this.findCartByUserId(userId);
+      if (!updatedCart) {
+        throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
+      }
+      return updatedCart;
+    } catch (error) {
+      this.logger.error(`Error updating cart item: ${error.message}`);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(ERROR_MESSAGES.CART.UPDATE_ERROR);
     }
+  }
 
-    await this.updateCartItemQuantity(cart, productId, quantity, product);
-    return this.saveCart(cart);
+  async updateItemSize(userId: string, productId: string, size: string): Promise<Cart> {
+    this.validateUserId(userId);
+    this.validateProductId(productId);
+    this.validateSize(size);
+
+    try {
+      const cart = await this.cartModel.findOne({ 
+        userId,
+        'items.productId': productId 
+      });
+
+      if (!cart) {
+        throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
+      }
+
+      // Get product details to validate size
+      const product = await this.getProductDetails(productId);
+      
+      // Validate if the size exists in product variants
+      if (!this.isValidSize(product, size)) {
+        throw new BadRequestException(`Size ${size} is not available for this product`);
+      }
+
+      const result = await this.cartModel.updateOne(
+        { 
+          userId,
+          'items.productId': productId 
+        },
+        { 
+          $set: { 
+            'items.$.size': size
+          }
+        }
+      );
+
+      if (result.modifiedCount === 0) {
+        throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
+      }
+
+      const updatedCart = await this.findCartByUserId(userId);
+      if (!updatedCart) {
+        throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
+      }
+      return updatedCart;
+    } catch (error) {
+      this.logger.error(`Error updating item size: ${error.message}`);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(ERROR_MESSAGES.CART.UPDATE_ERROR);
+    }
   }
 
   async removeItem(userId: string, productId: string): Promise<Cart> {
@@ -85,7 +182,6 @@ export class CartService {
     return this.saveCart(cart);
   }
 
-  // Private helper methods
   private validateUserId(userId: string): void {
     if (!userId) {
       throw new BadRequestException(ERROR_MESSAGES.VALIDATION.USER_ID_REQUIRED);
@@ -96,6 +192,25 @@ export class CartService {
     if (!productId) {
       throw new BadRequestException(ERROR_MESSAGES.VALIDATION.PRODUCT_ID_REQUIRED);
     }
+  }
+
+  private validateQuantity(quantity: number): void {
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new BadRequestException('Quantity must be a positive integer');
+    }
+  }
+
+  private validateSize(size: string): void {
+    if (!size || typeof size !== 'string') {
+      throw new BadRequestException('Size must be a valid string');
+    }
+  }
+
+  private isValidSize(product: any, size: string): boolean {
+    if (!product.variants || !Array.isArray(product.variants)) {
+      return false;
+    }
+    return product.variants.some(variant => variant.size === size);
   }
 
   private async findCartByUserId(userId: string): Promise<CartDocument | null> {
@@ -139,7 +254,6 @@ export class CartService {
         throw new BadRequestException(ERROR_MESSAGES.CART.INCOMPLETE_PRODUCT_DATA);
       }
 
-      // Validate variants data
       if (!Array.isArray(productData.variants)) {
         this.logger.warn(`Product ${productId} has no variants array`);
         return {
@@ -150,7 +264,6 @@ export class CartService {
         };
       }
 
-      // Validate and get default variant
       const defaultVariant = this.validateAndGetDefaultVariant(productData.variants, productId);
       
       return {
@@ -171,7 +284,6 @@ export class CartService {
       return {};
     }
 
-    // Validate each variant
     const validVariants = variants.filter(variant => {
       const isValid = typeof variant === 'object' && 
                      variant !== null &&
@@ -194,14 +306,12 @@ export class CartService {
   }
 
   private async addOrUpdateCartItem(cart: CartDocument, addItemDto: AddItemDto, product: any): Promise<void> {
-    // Validate color and size
     if (typeof product.color !== 'string' || typeof product.size !== 'string') {
       this.logger.warn(`Invalid color or size for product ${addItemDto.productId}`);
       product.color = '';
       product.size = '';
     }
 
-    // Validate stock
     if (typeof product.stock !== 'number' || product.stock < 0) {
       this.logger.warn(`Invalid stock for product ${addItemDto.productId}`);
       product.stock = 0;
@@ -235,16 +345,6 @@ export class CartService {
       });
     }
 
-    cart.totalAmount = this.calculateTotal(cart.items);
-  }
-
-  private async updateCartItemQuantity(cart: CartDocument, productId: string, quantity: number, product: any): Promise<void> {
-    const itemIndex = cart.items.findIndex(item => item.productId === productId);
-    if (itemIndex === -1) {
-      throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
-    }
-
-    cart.items[itemIndex].quantity = quantity;
     cart.totalAmount = this.calculateTotal(cart.items);
   }
 
