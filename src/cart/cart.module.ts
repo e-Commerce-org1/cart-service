@@ -27,9 +27,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           options: {
             package: 'auth',
             protoPath: join(__dirname, '../../src/proto/auth.proto'),
-            // url: configService.get<string>('AUTH_GRPC_URL'),
-            url:'0.0.0.0:5052'
-            
+            url: configService.get<string>('AUTH_GRPC_SERVICE'),
           },
         }),
         inject: [ConfigService],
@@ -42,8 +40,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           options: {
             package: 'product',
             protoPath: join(__dirname, '../../src/proto/product.proto'),
-            // url: configService.get<string>('PRODUCT_GRPC_URL'),
-            url:'0.0.0.0:5001'
+            url: configService.get<string>('PRODUCT_GRPC_SERVICE'),
           },
         }),
         inject: [ConfigService],

@@ -74,13 +74,11 @@ async function bootstrap() {
     },
   });
 
-  console.log('gRPC configuration completed');
-
   try {
    
     await app.startAllMicroservices();
     
-    logger.log('gRPC server started on port 7777');
+    logger.log('gRPC server started');
   } catch (error) {
    
     logger.error(`Failed to start gRPC server: ${error.message}`);
