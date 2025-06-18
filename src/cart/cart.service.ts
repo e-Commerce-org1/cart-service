@@ -26,7 +26,33 @@ export class CartService {
     if (!cart) {
       throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
     }
-    return cart;
+
+    const itemsWithDetails = await Promise.all(
+      cart.items.map(async (item) => {
+        const productDetails = await this.getProductDetails(item.productId);
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name,
+          image: item.image,
+          color: item.color,
+          size: item.size,
+          _id: item._id,
+          availableSizes: productDetails.availableSizes || []
+        };
+      })
+    );
+
+    const cartObject = cart.toObject();
+    return {
+      _id: cartObject._id,
+      userId: cartObject.userId,
+      items: itemsWithDetails,
+      totalAmount: cartObject.totalAmount,
+      createdAt: cartObject.createdAt,
+      updatedAt: cartObject.updatedAt
+    };
   }
 
   async addItem(userId: string, addItemDto: AddItemDto): Promise<Cart> {
@@ -106,7 +132,6 @@ export class CartService {
   async updateItemSize(userId: string, productId: string, size: string): Promise<Cart> {
     this.validateUserId(userId);
     this.validateProductId(productId);
-    this.validateSize(size);
 
     try {
       const cart = await this.cartModel.findOne({ 
@@ -118,12 +143,17 @@ export class CartService {
         throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
       }
 
-      // Get product details to validate size
       const product = await this.getProductDetails(productId);
       
-      // Validate if the size exists in product variants
-      if (!this.isValidSize(product, size)) {
+      // Check if the requested size is available
+      if (!product.availableSizes.includes(size)) {
         throw new BadRequestException(`Size ${size} is not available for this product`);
+      }
+
+      // Find the variant with the requested size to check stock
+      const variant = product.variants.find(v => v.size === size);
+      if (!variant || variant.stock < 1) {
+        throw new BadRequestException(`Size ${size} is out of stock`);
       }
 
       const result = await this.cartModel.updateOne(
@@ -148,7 +178,7 @@ export class CartService {
       }
       return updatedCart;
     } catch (error) {
-      this.logger.error(`Error updating item size: ${error.message}`);
+      this.logger.error(`Error updating cart item size: ${error.message}`);
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
@@ -200,19 +230,6 @@ export class CartService {
     }
   }
 
-  private validateSize(size: string): void {
-    if (!size || typeof size !== 'string') {
-      throw new BadRequestException('Size must be a valid string');
-    }
-  }
-
-  private isValidSize(product: any, size: string): boolean {
-    if (!product.variants || !Array.isArray(product.variants)) {
-      return false;
-    }
-    return product.variants.some(variant => variant.size === size);
-  }
-
   private async findCartByUserId(userId: string): Promise<CartDocument | null> {
     try {
       return await this.cartModel.findOne({ userId }).exec();
@@ -260,17 +277,26 @@ export class CartService {
           ...productData,
           color: '',
           size: '',
-          stock: 0
+          stock: 0,
+          availableSizes: []
         };
       }
 
       const defaultVariant = this.validateAndGetDefaultVariant(productData.variants, productId);
       
+      // Extract unique sizes from variants
+      const availableSizes = [...new Set(
+        productData.variants
+          .filter(variant => variant && typeof variant.size === 'string')
+          .map(variant => variant.size)
+      )];
+      
       return {
         ...productData,
         color: defaultVariant.color || '',
         size: defaultVariant.size || '',
-        stock: defaultVariant.stock || 0
+        stock: defaultVariant.stock || 0,
+        availableSizes
       };
     } catch (error) {
       this.logger.error(`Error fetching product details: ${error.message}`);

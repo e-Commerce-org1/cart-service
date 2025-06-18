@@ -7,10 +7,13 @@ import { join } from 'path';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { MongoExceptionFilter } from './common/filters/mongo-exception.filter';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+
+  const configService = app.get(ConfigService);
 
   app.enableCors();
 
@@ -67,19 +70,26 @@ async function bootstrap() {
     options: {
       package: 'cart',
       protoPath: join(__dirname, '../src/proto/cart.proto'),
-      url: '0.0.0.0:7777', 
+      url: configService.get<string>('CART_GRPC_SERVICE'), 
     },
   });
 
+  console.log('gRPC configuration completed');
+
   try {
+   
     await app.startAllMicroservices();
+    
     logger.log('gRPC server started on port 7777');
   } catch (error) {
+   
     logger.error(`Failed to start gRPC server: ${error.message}`);
+    
     process.exit(1);
   }
 
-  const port = process.env.PORT || 3000;
+  const port = configService.get<number>('PORT') || 3002;
   await app.listen(port);
+  
 }
 bootstrap();

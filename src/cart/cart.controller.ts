@@ -14,7 +14,6 @@ import {
 import { CartService } from './cart.service';
 import { Cart } from './schemas/cart.schema';
 import { AddItemDto } from './interfaces/add-item.interface';
-import { UpdateSizeDto } from './interfaces/update-size.interface';
 import { AuthGuard } from '../middleware/guards/auth.guard';
 import { UserIdRequest } from './interfaces/cart.interface';
 import {
@@ -24,7 +23,6 @@ import {
   ApiUpdateItem,
   ApiRemoveItem,
   ApiClearCart,
-  ApiUpdateItemSize,
 } from './swagger/cart.swagger';
 
 @ApiCartTags()
@@ -63,13 +61,16 @@ export class CartController {
   }
 
   @Put('/:productId/size')
-  @ApiUpdateItemSize()
+  @ApiUpdateItem()
   async updateItemSize(
     @Request() req,
     @Param('productId') productId: string,
-    @Body() updateSizeDto: UpdateSizeDto,
+    @Query('size') size: string,
   ) {
-    return this.cartService.updateItemSize(req.user.entityId, productId, updateSizeDto.size);
+    if (!size) {
+      throw new BadRequestException('Size is required');
+    }
+    return this.cartService.updateItemSize(req.user.entityId, productId, size);
   }
 
   @Delete('/:productId')

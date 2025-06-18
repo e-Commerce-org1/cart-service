@@ -11,28 +11,42 @@ import { ProductService } from '../product/services/product.service';
 import { ProductGrpcService } from '../product/services/product-grpc.service';
 import { CartGrpcService } from './grpc/cart.grpc.service';
 import { CartGrpcController } from './grpc/cart.grpc.controller';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
 
 @Module({
   imports: [
+    ConfigModule,
     MongooseModule.forFeature([{ name: Cart.name, schema: CartSchema }]),
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'AUTH_PACKAGE',
-        transport: Transport.GRPC,
-        options: {
-          package: 'auth',
-          protoPath: join(__dirname, '../../src/proto/auth.proto'),
-          url: process.env.AUTH_SERVICE_URL || '0.0.0.0:5052',
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.GRPC,
+          options: {
+            package: 'auth',
+            protoPath: join(__dirname, '../../src/proto/auth.proto'),
+            // url: configService.get<string>('AUTH_GRPC_URL'),
+            url:'0.0.0.0:5052'
+            
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'PRODUCT_PACKAGE',
-        transport: Transport.GRPC,
-        options: {
-          package: 'product',
-          protoPath: join(__dirname, '../../src/proto/product.proto'),
-          url: process.env.PRODUCT_SERVICE_URL || '0.0.0.0:5001',
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.GRPC,
+          options: {
+            package: 'product',
+            protoPath: join(__dirname, '../../src/proto/product.proto'),
+            // url: configService.get<string>('PRODUCT_GRPC_URL'),
+            url:'0.0.0.0:5001'
+          },
+        }),
+        inject: [ConfigService],
       },
     ]),
   ],

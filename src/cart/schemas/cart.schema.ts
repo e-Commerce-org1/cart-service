@@ -7,6 +7,14 @@ export type CartDocument = Cart & Document;
 @Schema()
 export class CartItem {
   @ApiProperty({
+    description: 'Cart item ID',
+    example: '6851049b3275028c0623b486',
+    required: false
+  })
+  @Prop()
+  _id?: string;
+
+  @ApiProperty({
     description: 'Product ID',
     example: 'product123',
   })
@@ -53,6 +61,13 @@ export class CartItem {
 @Schema({ timestamps: true })
 export class Cart {
   @ApiProperty({
+    description: 'Cart ID',
+    example: '684b24e040546dacba4d3d98',
+  })
+  @Prop()
+  _id: string;
+
+  @ApiProperty({
     description: 'User ID',
     example: 'user123',
   })
@@ -72,6 +87,20 @@ export class Cart {
   })
   @Prop({ required: true, default: 0 })
   totalAmount: number;
+
+  @ApiProperty({
+    description: 'Creation timestamp',
+    example: '2024-03-20T10:30:00.000Z',
+  })
+  @Prop()
+  createdAt: Date;
+
+  @ApiProperty({
+    description: 'Last update timestamp',
+    example: '2024-03-20T10:30:00.000Z',
+  })
+  @Prop()
+  updatedAt: Date;
 }
 
 export const CartSchema = SchemaFactory.createForClass(Cart); 
