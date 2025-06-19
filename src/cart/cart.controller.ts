@@ -37,13 +37,14 @@ export class CartController {
     return this.cartService.getCartDetails(req.user.entityId);
   }
 
-  @Post()
+  @Post(':productId')
   @ApiAddItem()
   async addItem(
     @Request() req,
+    @Param('productId') productId: string,
     @Body() addItemDto: AddItemDto,
   ) {
-    return this.cartService.addItem(req.user.entityId, addItemDto);
+    return this.cartService.addItem(req.user.entityId, productId, addItemDto);
   }
 
   @Put('/:productId')
@@ -86,5 +87,21 @@ export class CartController {
   @ApiClearCart()
   async clearCart(@Request() req) {
     return this.cartService.clearCart(req.user.entityId);
+  }
+
+  @Put('/:productId/increment')
+  async incrementItem(
+    @Request() req,
+    @Param('productId') productId: string,
+  ) {
+    return this.cartService.incrementItem(req.user.entityId, productId);
+  }
+
+  @Put('/:productId/decrement')
+  async decrementItem(
+    @Request() req,
+    @Param('productId') productId: string,
+  ) {
+    return this.cartService.decrementItem(req.user.entityId, productId);
   }
 } 

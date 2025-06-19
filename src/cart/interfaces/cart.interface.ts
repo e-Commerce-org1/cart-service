@@ -4,15 +4,17 @@ export interface UserIdRequest {
 
 export interface CartItem {
   productId: string;
-  description: string;
+  quantity: number;
   color: string;
   size: string;
-  quantity: number;
+  name: string;
   price: number;
+  image: string;
 }
 
 export interface CartDetailsResponse {
   items: CartItem[];
+  totalAmount: number;
 }
 
 export interface ClearCartResponse {

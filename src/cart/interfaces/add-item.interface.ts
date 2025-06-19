@@ -1,12 +1,20 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { QuantityProperty, ColorProperty, SizeProperty } from '../swagger/properties';
+import { IsOptional, IsString, IsInt, Min } from 'class-validator';
 
 export class AddItemDto {
-  @ApiProperty({
-    description: 'Product ID',
-    example: 'product123',
-    required: true,
-  })
+  @QuantityProperty()
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  quantity?: number;
+
+  @ColorProperty()
+  @IsOptional()
   @IsString()
-  productId: string;
+  color?: string;
+
+  @SizeProperty()
+  @IsOptional()
+  @IsString()
+  size?: string;
 } 

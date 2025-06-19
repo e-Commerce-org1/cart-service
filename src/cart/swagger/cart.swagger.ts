@@ -1,6 +1,7 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Cart } from '../schemas/cart.schema';
+import { AddItemDto } from '../interfaces/add-item.interface';
 
 export const ApiCartTags = () => applyDecorators(
   ApiTags('Cart'),
@@ -36,38 +37,16 @@ export const ApiGetCartDetails = () => applyDecorators(
   })
 );
 
-export const ApiAddItem = () => applyDecorators(
-  ApiOperation({ summary: 'Add item to cart' }),
-  ApiResponse({
-    status: 201,
-    description: 'Successfully added item to cart',
-    type: Cart,
-  }),
-  ApiResponse({ 
-    status: 400, 
-    description: 'Bad Request - Invalid input data or validation failed' 
-  }),
-  ApiResponse({ 
-    status: 401, 
-    description: 'Unauthorized - Invalid or missing authentication token' 
-  }),
-  ApiResponse({ 
-    status: 403, 
-    description: 'Forbidden - User does not have permission to modify cart' 
-  }),
-  ApiResponse({ 
-    status: 404, 
-    description: 'Not Found - Product not found' 
-  }),
-  ApiResponse({ 
-    status: 409, 
-    description: 'Conflict - Item already exists in cart' 
-  }),
-  ApiResponse({ 
-    status: 500, 
-    description: 'Internal Server Error - Something went wrong on the server' 
-  })
-);
+export function ApiAddItem() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Add item to cart' }),
+    ApiParam({ name: 'productId', description: 'Product ID', required: true }),
+    ApiBody({ description: 'Item details (except productId)', type: AddItemDto }),
+    ApiResponse({ status: 201, description: 'Item added to cart' }),
+    ApiResponse({ status: 400, description: 'Invalid input' }),
+    ApiResponse({ status: 404, description: 'Cart or product not found' }),
+  );
+}
 
 export const ApiUpdateItem = () => applyDecorators(
   ApiOperation({ summary: 'Update item quantity' }),
