@@ -3,6 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cart, CartDocument } from '../schemas/cart.schema';
 import { UserIdRequest, CartDetailsResponse, ClearCartResponse } from '../interfaces/cart.interface';
+import { ProductGrpcService } from '../../product/services/product-grpc.service';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class CartGrpcService {
@@ -10,6 +12,7 @@ export class CartGrpcService {
 
   constructor(
     @InjectModel(Cart.name) private cartModel: Model<CartDocument>,
+    private readonly productService: ProductGrpcService,
   ) {}
 
   async getCartDetails(data: UserIdRequest): Promise<CartDetailsResponse> {
@@ -20,19 +23,26 @@ export class CartGrpcService {
       
       if (!cart) {
         this.logger.warn(`No cart found for user: ${data.userId}`);
-        return { items: [] };
+        return { items: [], totalAmount: 0 };
       }
 
-      const items = cart.items.map(item => ({
-        productId: item.productId,
-        description: item.name || '',
-        color: item.color || '',
-        size: item.size || '',
-        quantity: item.quantity,
-        price: Math.round(item.price)
+      const items = await Promise.all(cart.items.map(async item => {
+        const product = await this.getProductDetails(item.productId);
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          color: item.color,
+          size: item.size,
+          name: product.name,
+          price: product.price,
+          image: product.imageUrl,
+        };
       }));
-
-      return { items };
+      const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      return {
+        items,
+        totalAmount,
+      };
     } catch (error) {
       this.logger.error(`Error getting cart details: ${error.message}`);
       throw error;
@@ -45,7 +55,7 @@ export class CartGrpcService {
       
       const result = await this.cartModel.updateOne(
         { userId: data.userId },
-        { $set: { items: [], totalAmount: 0 } }
+        { $set: { items: [] } }
       ).exec();
 
       if (result.matchedCount === 0) {
@@ -58,5 +68,17 @@ export class CartGrpcService {
       this.logger.error(`Error clearing cart: ${error.message}`);
       return { success: false };
     }
+  }
+
+  private async getProductDetails(productId: string) {
+    const response = await lastValueFrom(this.productService.getProduct(productId));
+    if (!response || response.code !== 200) {
+      throw new Error('Product not found');
+    }
+    const productData = JSON.parse(response.data);
+    if (!productData.price || !productData.name) {
+      throw new Error('Incomplete product data');
+    }
+    return productData;
   }
 } 

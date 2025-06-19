@@ -1,8 +1,10 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Logger, UseGuards } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 import { UserIdRequest, CartDetailsResponse, ClearCartResponse } from '../interfaces/cart.interface';
 import { CartGrpcService } from './cart.grpc.service';
+import { GrpcAuthGuard } from '../../middleware/guards/grpc-auth.guard';
 
+@UseGuards(GrpcAuthGuard)
 @Controller()
 export class CartGrpcController {
   private readonly logger = new Logger(CartGrpcController.name);

@@ -9,6 +9,7 @@ import { lastValueFrom } from 'rxjs';
 import { timeout, catchError } from 'rxjs/operators';
 import { AuthService } from '../middleware/services/auth.service';
 import { ProductService } from '../product/services/product.service';
+import { CartDetailsResponse } from './interfaces/cart.interface';
 
 @Injectable()
 export class CartService {
@@ -20,27 +21,47 @@ export class CartService {
     private productService: ProductService,
   ) {}
 
-  async getCartDetails(userId: string): Promise<Cart> {
+  async getCartDetails(userId: string): Promise<CartDetailsResponse> {
     this.validateUserId(userId);
     const cart = await this.findCartByUserId(userId);
     if (!cart) {
       throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
     }
-    return cart;
+    // Fetch latest product details for each item
+    const itemsWithDetails = await Promise.all(
+      cart.items.map(async item => {
+        const product = await this.getProductDetails(item.productId);
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          color: item.color,
+          size: item.size,
+          name: product.name,
+          price: product.price,
+          image: product.imageUrl,
+        };
+      })
+    );
+    // Calculate total dynamically
+    const totalAmount = itemsWithDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    return {
+      items: itemsWithDetails,
+      totalAmount,
+    };
   }
 
-  async addItem(userId: string, addItemDto: AddItemDto): Promise<Cart> {
+  async addItem(userId: string, productId: string, addItemDto: AddItemDto): Promise<Cart> {
     this.validateUserId(userId);
-    this.validateProductId(addItemDto.productId);
+    this.validateProductId(productId);
 
-    const product = await this.getProductDetails(addItemDto.productId);
+    const product = await this.getProductDetails(productId);
     let cart = await this.findCartByUserId(userId);
 
     if (!cart) {
       cart = await this.createNewCart(userId);
     }
 
-    await this.addOrUpdateCartItem(cart, addItemDto, product);
+    await this.addOrUpdateCartItem(cart, productId, addItemDto, product);
     return this.saveCart(cart);
   }
 
@@ -81,7 +102,49 @@ export class CartService {
     }
 
     cart.items = [];
-    cart.totalAmount = 0;
+    return this.saveCart(cart);
+  }
+
+  async incrementItem(userId: string, productId: string): Promise<Cart> {
+    this.validateUserId(userId);
+    this.validateProductId(productId);
+
+    const cart = await this.findCartByUserId(userId);
+    if (!cart) throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
+
+    const itemIndex = cart.items.findIndex(item => item.productId === productId);
+    if (itemIndex === -1) throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
+
+    // Get product details to check stock and update price
+    const product = await this.getProductDetails(productId);
+    if (cart.items[itemIndex].quantity + 1 > product.stock) {
+      throw new BadRequestException(`Not enough stock available. Only ${product.stock} items left.`);
+    }
+
+    cart.items[itemIndex].quantity += 1;
+    cart.items[itemIndex].price = product.price; // Update price to latest
+    return this.saveCart(cart);
+  }
+
+  async decrementItem(userId: string, productId: string): Promise<Cart> {
+    this.validateUserId(userId);
+    this.validateProductId(productId);
+
+    const cart = await this.findCartByUserId(userId);
+    if (!cart) throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
+
+    const itemIndex = cart.items.findIndex(item => item.productId === productId);
+    if (itemIndex === -1) throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
+
+    // Get product details to update price
+    const product = await this.getProductDetails(productId);
+
+    if (cart.items[itemIndex].quantity > 1) {
+      cart.items[itemIndex].quantity -= 1;
+      cart.items[itemIndex].price = product.price; // Update price to latest
+    } else {
+      cart.items.splice(itemIndex, 1);
+    }
     return this.saveCart(cart);
   }
 
@@ -110,8 +173,7 @@ export class CartService {
   private async createNewCart(userId: string): Promise<CartDocument> {
     return new this.cartModel({
       userId,
-      items: [],
-      totalAmount: 0
+      items: []
     });
   }
 
@@ -193,26 +255,23 @@ export class CartService {
     return validVariants[0];
   }
 
-  private async addOrUpdateCartItem(cart: CartDocument, addItemDto: AddItemDto, product: any): Promise<void> {
+  private async addOrUpdateCartItem(cart: CartDocument, productId: string, addItemDto: AddItemDto, product: any): Promise<void> {
     // Validate color and size
     if (typeof product.color !== 'string' || typeof product.size !== 'string') {
-      this.logger.warn(`Invalid color or size for product ${addItemDto.productId}`);
+      this.logger.warn(`Invalid color or size for product ${productId}`);
       product.color = '';
       product.size = '';
     }
-
     // Validate stock
     if (typeof product.stock !== 'number' || product.stock < 0) {
-      this.logger.warn(`Invalid stock for product ${addItemDto.productId}`);
+      this.logger.warn(`Invalid stock for product ${productId}`);
       product.stock = 0;
     }
-
     const existingItemIndex = cart.items.findIndex(item => 
-      item.productId === addItemDto.productId && 
+      item.productId === productId && 
       item.color === product.color && 
       item.size === product.size
     );
-
     if (existingItemIndex > -1) {
       // Check if adding one more item would exceed stock
       if (cart.items[existingItemIndex].quantity + 1 > product.stock) {
@@ -224,18 +283,17 @@ export class CartService {
       if (product.stock < 1) {
         throw new BadRequestException('Product is out of stock');
       }
+      let quantity = addItemDto.quantity;
+      if (!quantity || typeof quantity !== 'number' || quantity < 1) {
+        quantity = 1;
+      }
       cart.items.push({
-        productId: addItemDto.productId,
-        quantity: 1,
-        price: product.price,
-        name: product.name,
-        image: product.imageUrl || '',
-        color: product.color || '',
-        size: product.size || ''
+        productId,
+        quantity,
+        color: addItemDto.color || product.color || '',
+        size: addItemDto.size || product.size || ''
       });
     }
-
-    cart.totalAmount = this.calculateTotal(cart.items);
   }
 
   private async updateCartItemQuantity(cart: CartDocument, productId: string, quantity: number, product: any): Promise<void> {
@@ -243,9 +301,7 @@ export class CartService {
     if (itemIndex === -1) {
       throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
     }
-
     cart.items[itemIndex].quantity = quantity;
-    cart.totalAmount = this.calculateTotal(cart.items);
   }
 
   private async decreaseItemQuantity(cart: CartDocument, productId: string): Promise<void> {
@@ -253,14 +309,11 @@ export class CartService {
     if (itemIndex === -1) {
       throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
     }
-
     if (cart.items[itemIndex].quantity > 1) {
       cart.items[itemIndex].quantity -= 1;
     } else {
       cart.items.splice(itemIndex, 1);
     }
-
-    cart.totalAmount = this.calculateTotal(cart.items);
   }
 
   private async saveCart(cart: CartDocument): Promise<Cart> {
@@ -273,12 +326,8 @@ export class CartService {
   }
 
   private calculateTotal(items: any[]): number {
-    try {
-      return items.reduce((total, item) => total + (item.price * item.quantity), 0);
-    } catch (error) {
-      this.logger.error(`Error calculating total: ${error.message}`);
-      return 0;
-    }
+    // No longer needed, but kept for compatibility if used elsewhere
+    return 0;
   }
 } 
 
