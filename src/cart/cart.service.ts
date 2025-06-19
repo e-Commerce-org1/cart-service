@@ -164,7 +164,6 @@ export class CartService {
     }
 
     cart.items[itemIndex].quantity += 1;
-    cart.items[itemIndex].price = product.price; 
     return this.saveCart(cart);
   }
 
@@ -182,7 +181,6 @@ export class CartService {
 
     if (cart.items[itemIndex].quantity > 1) {
       cart.items[itemIndex].quantity -= 1;
-      cart.items[itemIndex].price = product.price; 
     } else {
       cart.items.splice(itemIndex, 1);
     }

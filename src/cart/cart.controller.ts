@@ -46,11 +46,11 @@ export class CartController {
     return this.cartService.addItem(req.user.entityId, productId, addItemDto);
   }
 
-  @Put('/:productId/size')
+  @Put('/:productId/:size')
   async updateItemSize(
     @Request() req,
     @Param('productId') productId: string,
-    @Query('size') size: string,
+    @Param('size') size: string,
   ) {
     if (!size) {
       throw new BadRequestException('Size is required');
