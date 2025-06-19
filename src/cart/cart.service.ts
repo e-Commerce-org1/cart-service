@@ -43,7 +43,7 @@ export class CartService {
       })
     );
    
-    const totalAmount = itemsWithDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const totalAmount = await this.calculateTotal(itemsWithDetails);
     return {
       items: itemsWithDetails,
       totalAmount,
@@ -63,65 +63,6 @@ export class CartService {
 
     await this.addOrUpdateCartItem(cart, productId, addItemDto, product);
     return this.saveCart(cart);
-  }
-
-  async updateItem(userId: string, productId: string, quantity: number): Promise<Cart> {
-    this.validateUserId(userId);
-    this.validateProductId(productId);
-    this.validateQuantity(quantity);
-
-    try {
-      const cart = await this.cartModel.findOne({ 
-        userId,
-        'items.productId': productId 
-      });
-
-      if (!cart) {
-        throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
-      }
-
-
-      const product = await this.getProductDetails(productId);
-      
-      if (quantity > product.stock) {
-        throw new BadRequestException(`Not enough stock available. Only ${product.stock} items left.`);
-      }
-
-      const result = await this.cartModel.updateOne(
-        { 
-          userId,
-          'items.productId': productId 
-        },
-        { 
-          $set: { 
-            'items.$.quantity': quantity,
-            totalAmount: this.calculateTotal(
-              cart.items.map(item => 
-                item.productId === productId 
-                  ? { ...item, quantity } 
-                  : item
-              )
-            )
-          }
-        }
-      );
-
-      if (result.modifiedCount === 0) {
-        throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
-      }
-
-      const updatedCart = await this.findCartByUserId(userId);
-      if (!updatedCart) {
-        throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
-      }
-      return updatedCart;
-    } catch (error) {
-      this.logger.error(`Error updating cart item: ${error.message}`);
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(ERROR_MESSAGES.CART.UPDATE_ERROR);
-    }
   }
 
   async updateItemSize(userId: string, productId: string, size: string): Promise<Cart> {
@@ -436,5 +377,14 @@ export class CartService {
     }
   }
 
+  private async calculateTotal(items: { productId: string; quantity: number }[]): Promise<number> {
+    const itemsWithPrices = await Promise.all(
+      items.map(async (item) => {
+        const product = await this.getProductDetails(item.productId);
+        return item.quantity * product.price;
+      })
+    );
+    return itemsWithPrices.reduce((total, price) => total + price, 0);
+  }
 } 
 

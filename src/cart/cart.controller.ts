@@ -20,7 +20,6 @@ import {
   ApiCartTags,
   ApiGetCartDetails,
   ApiAddItem,
-  ApiUpdateItem,
   ApiRemoveItem,
   ApiClearCart,
 } from './swagger/cart.swagger';
@@ -47,22 +46,7 @@ export class CartController {
     return this.cartService.addItem(req.user.entityId, productId, addItemDto);
   }
 
-  @Put('/:productId')
-  @ApiUpdateItem()
-  async updateItem(
-    @Request() req,
-    @Param('productId') productId: string,
-    @Query('quantity') quantity: string,
-  ) {
-    const quantityNumber = Number(quantity);
-    if (isNaN(quantityNumber)) {
-      throw new BadRequestException('Quantity must be a number');
-    }
-    return this.cartService.updateItem(req.user.entityId, productId, quantityNumber);
-  }
-
   @Put('/:productId/size')
-  @ApiUpdateItem()
   async updateItemSize(
     @Request() req,
     @Param('productId') productId: string,
