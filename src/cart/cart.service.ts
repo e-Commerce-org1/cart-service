@@ -27,7 +27,7 @@ export class CartService {
     if (!cart) {
       throw new NotFoundException(ERROR_MESSAGES.CART.NOT_FOUND);
     }
-    // Fetch latest product details for each item
+    
     const itemsWithDetails = await Promise.all(
       cart.items.map(async item => {
         const product = await this.getProductDetails(item.productId);
@@ -42,7 +42,7 @@ export class CartService {
         };
       })
     );
-    // Calculate total dynamically
+   
     const totalAmount = itemsWithDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     return {
       items: itemsWithDetails,
@@ -115,14 +115,14 @@ export class CartService {
     const itemIndex = cart.items.findIndex(item => item.productId === productId);
     if (itemIndex === -1) throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
 
-    // Get product details to check stock and update price
+    
     const product = await this.getProductDetails(productId);
     if (cart.items[itemIndex].quantity + 1 > product.stock) {
       throw new BadRequestException(`Not enough stock available. Only ${product.stock} items left.`);
     }
 
     cart.items[itemIndex].quantity += 1;
-    cart.items[itemIndex].price = product.price; // Update price to latest
+    cart.items[itemIndex].price = product.price; 
     return this.saveCart(cart);
   }
 
@@ -136,19 +136,17 @@ export class CartService {
     const itemIndex = cart.items.findIndex(item => item.productId === productId);
     if (itemIndex === -1) throw new NotFoundException(ERROR_MESSAGES.CART.ITEM_NOT_FOUND);
 
-    // Get product details to update price
     const product = await this.getProductDetails(productId);
 
     if (cart.items[itemIndex].quantity > 1) {
       cart.items[itemIndex].quantity -= 1;
-      cart.items[itemIndex].price = product.price; // Update price to latest
+      cart.items[itemIndex].price = product.price; 
     } else {
       cart.items.splice(itemIndex, 1);
     }
     return this.saveCart(cart);
   }
 
-  // Private helper methods
   private validateUserId(userId: string): void {
     if (!userId) {
       throw new BadRequestException(ERROR_MESSAGES.VALIDATION.USER_ID_REQUIRED);
@@ -201,7 +199,6 @@ export class CartService {
         throw new BadRequestException(ERROR_MESSAGES.CART.INCOMPLETE_PRODUCT_DATA);
       }
 
-      // Validate variants data
       if (!Array.isArray(productData.variants)) {
         this.logger.warn(`Product ${productId} has no variants array`);
         return {
@@ -212,7 +209,6 @@ export class CartService {
         };
       }
 
-      // Validate and get default variant
       const defaultVariant = this.validateAndGetDefaultVariant(productData.variants, productId);
       
       return {
@@ -233,7 +229,6 @@ export class CartService {
       return {};
     }
 
-    // Validate each variant
     const validVariants = variants.filter(variant => {
       const isValid = typeof variant === 'object' && 
                      variant !== null &&
@@ -256,13 +251,13 @@ export class CartService {
   }
 
   private async addOrUpdateCartItem(cart: CartDocument, productId: string, addItemDto: AddItemDto, product: any): Promise<void> {
-    // Validate color and size
+   
     if (typeof product.color !== 'string' || typeof product.size !== 'string') {
       this.logger.warn(`Invalid color or size for product ${productId}`);
       product.color = '';
       product.size = '';
     }
-    // Validate stock
+   
     if (typeof product.stock !== 'number' || product.stock < 0) {
       this.logger.warn(`Invalid stock for product ${productId}`);
       product.stock = 0;
@@ -273,13 +268,13 @@ export class CartService {
       item.size === product.size
     );
     if (existingItemIndex > -1) {
-      // Check if adding one more item would exceed stock
+      
       if (cart.items[existingItemIndex].quantity + 1 > product.stock) {
         throw new BadRequestException(`Not enough stock available. Only ${product.stock} items left.`);
       }
       cart.items[existingItemIndex].quantity += 1;
     } else {
-      // Check if there's any stock available
+      
       if (product.stock < 1) {
         throw new BadRequestException('Product is out of stock');
       }
@@ -325,9 +320,5 @@ export class CartService {
     }
   }
 
-  private calculateTotal(items: any[]): number {
-    // No longer needed, but kept for compatibility if used elsewhere
-    return 0;
-  }
 } 
 
