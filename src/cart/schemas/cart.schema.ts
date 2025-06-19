@@ -19,6 +19,10 @@ export class CartItem {
 
   @Prop()
   size: string;
+
+  @PriceProperty()
+  @Prop()
+  price?: number;
 }
 
 @Schema({ timestamps: true })
